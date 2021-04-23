@@ -1,9 +1,14 @@
 {
 	"name": "branch-breakpoints",
 	"displayName": "Branch Breakpoints",
-	"description": "",
+	"description": "Manages breakpoints based on the working git branch.",
+	"author": "Armando Aguirre <araguir@microsoft.com>",
 	"version": "0.0.1",
 	"publisher": "armanio123",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/armanio123/BranchBreakpoints.git"
+	},
 	"engines": {
 		"vscode": "^1.46.0"
 	},
