@@ -16,9 +16,35 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"onCommand:branchBreakpoints.printMap",
+		"onCommand:branchBreakpoints.clearMap"
 	],
 	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "branchBreakpoints.printMap",
+				"title": "Print Breakpoint Map",
+				"category": "Branch Breakpoints"
+			},
+			{
+				"command": "branchBreakpoints.clearMap",
+				"title": "Clear Breakpoint Map",
+				"category": "Branch Breakpoints"
+			}
+		],
+		"configuration": {
+			"title": "Branch Breakpoints",
+			"properties": {
+				"branchBreakpoints.trace": {
+					"type":"boolean",
+					"default": false,
+					"description": "Enable debug logging for the Branch Breakpoints extension."
+				}
+			}
+		}
+	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
 		"compile": "tsc -p ./",
