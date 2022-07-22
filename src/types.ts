@@ -1,12 +1,6 @@
 import type { SourceBreakpoint, FunctionBreakpoint, Breakpoint } from "vscode";
 
-export interface JsonBreakpoint {
-	// Breakpoint data
-	enabled: boolean;
-	condition?: string;
-	hitCondition?: string;
-	logMessage?: string;
-
+export interface JsonBreakpoint extends Breakpoint {
 	// SourceBreakpoint or FunctionBreakpoint data
 	location?: {
 		uri: {
@@ -30,5 +24,7 @@ export interface JsonBranchBreakpoints {
 
 export interface BranchBreakpoints {
 	branchName: string;
-	breakpoints: (SourceBreakpoint | FunctionBreakpoint | Breakpoint)[];
+	breakpoints: VSCodeBreakpoint[];
 }
+
+export type VSCodeBreakpoint = SourceBreakpoint | FunctionBreakpoint | Breakpoint;

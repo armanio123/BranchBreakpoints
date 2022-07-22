@@ -1,6 +1,6 @@
 import { Breakpoint, BreakpointsChangeEvent, commands, debug as vscodeDebug, ExtensionContext, FunctionBreakpoint, Location, OutputChannel, Position, Range, SourceBreakpoint, Uri, window, workspace } from 'vscode';
 import * as fs from 'fs';
-import { BranchBreakpoints, JsonBranchBreakpoints, JsonBreakpoint } from './types';
+import { BranchBreakpoints, JsonBranchBreakpoints, JsonBreakpoint, VSCodeBreakpoint } from './types';
 
 const breakpointMapKeyName = 'breakpointMap';
 const configurationSection = 'branchBreakpoints';
@@ -113,6 +113,19 @@ function trace(value: string) {
 	}
 }
 
+function isSourceBreakpoint(breakpoint: VSCodeBreakpoint): breakpoint is SourceBreakpoint {
+	return (breakpoint as SourceBreakpoint).location !== undefined;
+}
+
+function isFunctionBreakpoint(breakpoint: VSCodeBreakpoint): breakpoint is FunctionBreakpoint {
+	return (breakpoint as FunctionBreakpoint).functionName !== undefined;
+}
+
+function areBreakpointsEqual(breakpoint1: VSCodeBreakpoint, breakpoint2: VSCodeBreakpoint): boolean {
+	return isSourceBreakpoint(breakpoint1) && isSourceBreakpoint(breakpoint2) && breakpoint1.location.uri.path === breakpoint2.location.uri.path && breakpoint1.location.range.isEqual(breakpoint2.location.range)
+		|| isFunctionBreakpoint(breakpoint1) && isFunctionBreakpoint(breakpoint2) && breakpoint1.functionName === breakpoint2.functionName;
+}
+
 function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolean, branchBreakpoints: BranchBreakpoints[], head: string): BranchBreakpoints[] | undefined {
 	// If a branch is active, don't perform any operation
 	if (isBranchLocked) {
@@ -125,22 +138,32 @@ function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolea
 		? branchBreakpoints[index]
 		: { branchName: head, breakpoints: [] };
 
-	if (e.added.length > 0) {
-		branchBreakpoint.breakpoints.push(...e.added);
+	for (let breakpoint of e.added) {
+		// Add the new breakpoint only if they don't exists yet.
+		const existinBreakpoint = branchBreakpoint.breakpoints.find(x => areBreakpointsEqual(breakpoint, x));
+		if (!existinBreakpoint) {
+			branchBreakpoint.breakpoints.push(breakpoint);
+
+			trace('Added new breakpoint.');
+		}
 	}
 
 	for (const breakpoint of e.changed) {
-		const index = branchBreakpoint.breakpoints.findIndex(value => value.id === breakpoint.id);
+		const index = branchBreakpoint.breakpoints.findIndex(x => areBreakpointsEqual(x, breakpoint));
 		branchBreakpoint.breakpoints.splice(index, 1);
 		branchBreakpoint.breakpoints = [
 			...branchBreakpoint.breakpoints.slice(0, index),
 			breakpoint,
 			...branchBreakpoint.breakpoints.slice(index + 1, branchBreakpoint.breakpoints.length)];
+
+		trace(`Changed breakpoint index: ${index}`);
 	}
 
 	for (const breakpoint of e.removed) {
-		const index = branchBreakpoint.breakpoints.findIndex(value => value.id === breakpoint.id);
+		const index = branchBreakpoint.breakpoints.findIndex(x => areBreakpointsEqual(x, breakpoint));
 		branchBreakpoint.breakpoints.splice(index, 1);
+
+		trace(`Removed breakpoint index: ${index}`);
 	}
 
 	const updateBreakpoints = [...branchBreakpoints];
