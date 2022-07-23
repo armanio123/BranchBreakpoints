@@ -1,6 +1,6 @@
 import { Breakpoint, BreakpointsChangeEvent, commands, debug as vscodeDebug, ExtensionContext, FunctionBreakpoint, Location, OutputChannel, Position, Range, SourceBreakpoint, Uri, window, workspace } from 'vscode';
 import * as fs from 'fs';
-import { BranchBreakpoints, JsonBranchBreakpoints, JsonBreakpoint, VSCodeBreakpoint } from './types';
+import { JsonBranchBreakpoints, JsonBreakpoint, VSCodeBreakpoint } from './types';
 
 const breakpointMapKeyName = 'breakpointMap';
 const configurationSection = 'branchBreakpoints';
@@ -12,7 +12,7 @@ export function activate(context: ExtensionContext) {
 	createOutputChannel(workspace.getConfiguration(configurationSection).get(traceConfiguration));
 	trace('Extension activated');
 
-	let branchBreakpoints = getBranchBreakpoints(context);
+	let branchBreakpoints = context.workspaceState.get<JsonBranchBreakpoints[]>(breakpointMapKeyName) || [];
 	trace(`Loaded breakpoints: ${JSON.stringify(branchBreakpoints)}`);
 
 	// TODO: Fix headFilename when workspace is `undefined`.
@@ -80,10 +80,17 @@ export function activate(context: ExtensionContext) {
 		trace(`Remove breakpoints: ${JSON.stringify(vscodeDebug.breakpoints)}`);
 		vscodeDebug.removeBreakpoints(vscodeDebug.breakpoints);
 
-		const breakpoints = branchBreakpoints.find(value => value.branchName === head)?.breakpoints;
+		const branchBreakpoint = branchBreakpoints.find(value => value.branchName === head);
+		const breakpoints = branchBreakpoint?.breakpoints;
+
 		if (breakpoints && breakpoints.length !== 0) {
-			trace(`Add breakpoints: ${JSON.stringify(breakpoints)}`);
-			vscodeDebug.addBreakpoints(breakpoints as Breakpoint[]);
+			for (let i = 0; i < breakpoints.length; i++) {
+				breakpoints[i] = getBreakpoint(breakpoints[i]);
+			}
+
+			vscodeDebug.addBreakpoints(breakpoints);
+
+			trace(`Set breakpoints: ${JSON.stringify(breakpoints)}`);
 		}
 
 		isBranchLocked = false;
@@ -126,7 +133,7 @@ function areBreakpointsEqual(breakpoint1: VSCodeBreakpoint, breakpoint2: VSCodeB
 		|| isFunctionBreakpoint(breakpoint1) && isFunctionBreakpoint(breakpoint2) && breakpoint1.functionName === breakpoint2.functionName;
 }
 
-function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolean, branchBreakpoints: BranchBreakpoints[], head: string): BranchBreakpoints[] | undefined {
+function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolean, branchBreakpoints: JsonBranchBreakpoints[], head: string): JsonBranchBreakpoints[] | undefined {
 	// If a branch is active, don't perform any operation
 	if (isBranchLocked) {
 		return;
@@ -144,7 +151,7 @@ function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolea
 		if (!existinBreakpoint) {
 			branchBreakpoint.breakpoints.push(breakpoint);
 
-			trace('Added new breakpoint.');
+			trace(`Added new breakpoint: ${JSON.stringify(breakpoint)}`);
 		}
 	}
 
@@ -176,30 +183,14 @@ function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolea
 	return updateBreakpoints;
 }
 
-function getBranchBreakpoints(context: ExtensionContext): BranchBreakpoints[] {
-	const jsonBranchBreakpoints = context.workspaceState.get<JsonBranchBreakpoints[]>(breakpointMapKeyName) || [];
-
-	const result: BranchBreakpoints[] = [];
-	for (const jsonBranchBreakpoint of jsonBranchBreakpoints) {
-		const { branchName } = jsonBranchBreakpoint;
-		const breakpoints: Breakpoint[] = [];
-		for (const breakpoint of jsonBranchBreakpoint.breakpoints) {
-			const bp = getBreakpoint(breakpoint);
-			if (bp) {
-				breakpoints.push(bp);
-			}
-		}
-
-		result.push({
-			branchName,
-			breakpoints
-		});
+function getBreakpoint(breakpoint: JsonBreakpoint): Breakpoint {
+	if (breakpoint instanceof SourceBreakpoint || breakpoint instanceof FunctionBreakpoint) {
+		trace ('Breakpoint already instantiated.')
+		return breakpoint;
 	}
 
-	return result;
-}
+	trace ('Instantiate new breakpoint.')
 
-function getBreakpoint(breakpoint: JsonBreakpoint): Breakpoint | undefined {
 	const { enabled, condition, functionName, hitCondition, location, logMessage } = breakpoint;
 
 	// Instantiate the breakpoint.
@@ -216,7 +207,7 @@ function getBreakpoint(breakpoint: JsonBreakpoint): Breakpoint | undefined {
 	} else if (functionName) {
 		return new FunctionBreakpoint(functionName, enabled, condition, hitCondition, logMessage);
 	} else {
-		console.error('location or functionName has not been defined on the breakpoint.');
+		throw new Error('location or functionName has not been defined on the breakpoint.');
 	}
 }
 

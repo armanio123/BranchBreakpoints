@@ -22,9 +22,4 @@ export interface JsonBranchBreakpoints {
 	breakpoints: JsonBreakpoint[];
 }
 
-export interface BranchBreakpoints {
-	branchName: string;
-	breakpoints: VSCodeBreakpoint[];
-}
-
 export type VSCodeBreakpoint = SourceBreakpoint | FunctionBreakpoint | Breakpoint;
