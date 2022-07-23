@@ -1,6 +1,6 @@
 import { Breakpoint, BreakpointsChangeEvent, commands, debug as vscodeDebug, ExtensionContext, FunctionBreakpoint, Location, OutputChannel, Position, Range, SourceBreakpoint, Uri, window, workspace } from 'vscode';
 import * as fs from 'fs';
-import { JsonBranchBreakpoints, JsonBreakpoint, VSCodeBreakpoint } from './types';
+import { BranchBreakpoints, JsonBreakpoint, VSCodeBreakpoint } from './types';
 
 const breakpointMapKeyName = 'breakpointMap';
 const configurationSection = 'branchBreakpoints';
@@ -12,7 +12,7 @@ export function activate(context: ExtensionContext) {
 	createOutputChannel(workspace.getConfiguration(configurationSection).get(traceConfiguration));
 	trace('Extension activated');
 
-	let branchBreakpoints = context.workspaceState.get<JsonBranchBreakpoints[]>(breakpointMapKeyName) || [];
+	let branchBreakpoints = context.workspaceState.get<BranchBreakpoints[]>(breakpointMapKeyName) || [];
 	trace(`Loaded breakpoints: ${JSON.stringify(branchBreakpoints)}`);
 
 	// TODO: Fix headFilename when workspace is `undefined`.
@@ -133,7 +133,7 @@ function areBreakpointsEqual(breakpoint1: VSCodeBreakpoint, breakpoint2: VSCodeB
 		|| isFunctionBreakpoint(breakpoint1) && isFunctionBreakpoint(breakpoint2) && breakpoint1.functionName === breakpoint2.functionName;
 }
 
-function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolean, branchBreakpoints: JsonBranchBreakpoints[], head: string): JsonBranchBreakpoints[] | undefined {
+function getUpdatedBreakpoints(e: BreakpointsChangeEvent, isBranchLocked: boolean, branchBreakpoints: BranchBreakpoints[], head: string): BranchBreakpoints[] | undefined {
 	// If a branch is active, don't perform any operation
 	if (isBranchLocked) {
 		return;

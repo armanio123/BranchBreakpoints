@@ -17,7 +17,7 @@ export interface JsonBreakpoint extends Breakpoint {
 	functionName?: string;
 }
 
-export interface JsonBranchBreakpoints {
+export interface BranchBreakpoints {
 	branchName: string;
 	breakpoints: JsonBreakpoint[];
 }
